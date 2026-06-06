@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anytomd"
+version = "1.0.0"
+description = "Cross-platform GUI + CLI tool to convert PDFs, Office docs and more to Markdown, powered by MarkItDown."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "AnythingToMarkdown" }]
+keywords = ["markdown", "markitdown", "pdf", "docx", "converter", "gui", "cli"]
+classifiers = [
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
+
+dependencies = [
+    "markitdown[all]>=0.1.0",
+    "PySide6>=6.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/microsoft/markitdown"
+
+[project.scripts]
+anytomd = "anytomd.cli:main"
+
+[project.gui-scripts]
+anytomd-gui = "anytomd.gui:launch_gui"
+
+[tool.setuptools]
+packages = ["anytomd"]
