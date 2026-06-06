@@ -9,8 +9,8 @@ REM    make install         install runtime dependencies
 REM    make dev             editable install (adds the `anytomd` command)
 REM    make run             launch the GUI   (alias: make gui)
 REM    make cli <args...>   run the CLI, e.g.  make cli report.pdf -o out
-REM    make app             build the clickable Windows app (dist\AnythingToMarkdown)
-REM    make open-app        open the built app folder
+REM    make app             build the single-file Windows app (dist\AnythingToMarkdown.exe)
+REM    make open-app        reveal the built executable in Explorer
 REM    make icon            regenerate the app icons
 REM    make clean           remove build/dist artifacts (keeps the venv)
 REM    make clean-all       also remove the virtual environment
@@ -53,8 +53,8 @@ echo   install     Install runtime dependencies into the venv
 echo   dev         Editable install so the `anytomd` command is available
 echo   run / gui   Launch the GUI
 echo   cli ARGS    Run the CLI, e.g. make cli report.pdf -o out
-echo   app         Build the clickable Windows app (dist\%APP_NAME%)
-echo   open-app    Open the built app folder
+echo   app         Build the single-file Windows app (dist\%APP_NAME%.exe)
+echo   open-app    Reveal the built executable in Explorer
 echo   icon        Regenerate the app icons
 echo   clean       Remove build/dist artifacts (keeps the venv)
 echo   clean-all   Remove everything, including the virtual environment
@@ -129,14 +129,14 @@ pushd "%ROOT%packaging"
     --distpath "%ROOT%dist" --workpath "%ROOT%build"
 popd
 echo.
-echo Built: dist\%APP_NAME%\%APP_NAME%.exe
+echo Built single-file executable: dist\%APP_NAME%.exe
 echo Run it by double-clicking %APP_NAME%.exe, or: make open-app
 goto :eof
 
 REM ---------------------------------------------------------------------------
 :open_app
-if exist "%ROOT%dist\%APP_NAME%" (
-    explorer "%ROOT%dist\%APP_NAME%"
+if exist "%ROOT%dist\%APP_NAME%.exe" (
+    explorer /select,"%ROOT%dist\%APP_NAME%.exe"
 ) else (
     echo Not built yet. Run "make app" first.
 )

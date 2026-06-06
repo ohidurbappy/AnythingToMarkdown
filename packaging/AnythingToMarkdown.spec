@@ -30,6 +30,11 @@ else:
 CODESIGN_IDENTITY = os.environ.get("MACOS_CODESIGN_IDENTITY") or None
 ENTITLEMENTS = os.environ.get("MACOS_ENTITLEMENTS") or None
 
+# macOS ships a proper .app bundle; Windows/Linux ship a single-file executable.
+# Set FORCE_ONEFILE=1 to produce a single-file binary on macOS too (mainly for
+# testing the onefile path).
+BUILD_APP = IS_MAC and os.environ.get("FORCE_ONEFILE") != "1"
+
 datas, binaries, hiddenimports = [], [], []
 
 # MarkItDown discovers its converters through package metadata / entry points,
@@ -75,37 +80,39 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    [],
-    exclude_binaries=True,
-    name="AnythingToMarkdown",
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=False,
-    console=False,            # windowed app (no terminal)
-    disable_windowed_traceback=False,
-    argv_emulation=IS_MAC,    # macOS-only: lets Finder "Open With" pass files as argv
-    target_arch=None,
-    codesign_identity=CODESIGN_IDENTITY,
-    entitlements_file=ENTITLEMENTS,
-    icon=ICON,
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=False,
-    upx=False,
-    upx_exclude=[],
-    name="AnythingToMarkdown",
-)
-
-# Wrap the one-folder app in a clickable .app bundle on macOS only.
-if IS_MAC:
+# Packaging mode:
+#   * macOS  -> one-folder build wrapped in a proper .app bundle (fast launch,
+#     real icon/Finder integration, notarizable). The .dmg ships this.
+#   * Windows/Linux -> a single self-contained executable (onefile) so there's
+#     just one file to hand someone.
+if BUILD_APP:
+    exe = EXE(
+        pyz,
+        a.scripts,
+        [],
+        exclude_binaries=True,
+        name="AnythingToMarkdown",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        console=False,            # windowed app (no terminal)
+        disable_windowed_traceback=False,
+        argv_emulation=True,      # lets Finder "Open With" pass files as argv
+        target_arch=None,
+        codesign_identity=CODESIGN_IDENTITY,
+        entitlements_file=ENTITLEMENTS,
+        icon=ICON,
+    )
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.datas,
+        strip=False,
+        upx=False,
+        upx_exclude=[],
+        name="AnythingToMarkdown",
+    )
     app = BUNDLE(
         coll,
         name="AnythingToMarkdown.app",
@@ -139,3 +146,25 @@ if IS_MAC:
         ],
     },
 )
+else:
+    # Single-file executable: bundle scripts + binaries + datas into one EXE.
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.datas,
+        [],
+        name="AnythingToMarkdown",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        runtime_tmpdir=None,
+        console=False,            # windowed app (no terminal)
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+        icon=ICON,
+    )

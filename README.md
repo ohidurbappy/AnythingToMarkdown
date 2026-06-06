@@ -74,14 +74,16 @@ This rebuilds the app with the hardened runtime ([packaging/entitlements.plist](
 
 ## Windows — clickable app
 
-A standalone, double-clickable Windows app can be built (no Python required to run it):
+A standalone, **single-file** `.exe` can be built (no Python required to run it):
 
 ```bat
-make app                 :: builds dist\AnythingToMarkdown\AnythingToMarkdown.exe
-make open-app            :: opens the folder in Explorer
+make app                 :: builds dist\AnythingToMarkdown.exe (one file)
+make open-app            :: reveals it in Explorer
 ```
 
-(or run `packaging\build_windows.bat` directly). The result is a one-folder app — double-click **`AnythingToMarkdown.exe`** to launch the GUI. To share it, zip the whole `dist\AnythingToMarkdown` folder.
+(or run `packaging\build_windows.bat` directly). The result is a single self-contained executable — just hand someone **`AnythingToMarkdown.exe`** and they double-click it to launch the GUI. Run it from a terminal with arguments (e.g. `AnythingToMarkdown.exe report.pdf -o out`) to use the CLI.
+
+> A single-file `.exe` unpacks to a temp folder on launch, so the **first** start is a few seconds slower than the macOS app — that's normal for onefile builds.
 
 > Windows SmartScreen may warn about an unrecognized app on first launch (it isn't code-signed). Click **More info → Run anyway**.
 
@@ -92,7 +94,7 @@ make open-app            :: opens the folder in Explorer
 The repo ships a CI workflow ([.github/workflows/build.yml](.github/workflows/build.yml)) that builds both platforms and publishes them to a GitHub Release:
 
 - **macOS** → `AnythingToMarkdown-<version>.dmg`
-- **Windows** → `AnythingToMarkdown-<version>-windows-x64.zip`
+- **Windows** → `AnythingToMarkdown-<version>-windows-x64.exe` (single file)
 
 **To cut a release**, push a version tag:
 

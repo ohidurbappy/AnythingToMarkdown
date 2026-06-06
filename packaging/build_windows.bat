@@ -1,6 +1,6 @@
 @echo off
 REM Build the clickable AnythingToMarkdown app for Windows.
-REM Produces dist\AnythingToMarkdown\AnythingToMarkdown.exe (one-folder app).
+REM Produces a single-file executable: dist\AnythingToMarkdown.exe
 setlocal
 
 set "HERE=%~dp0"
@@ -26,6 +26,6 @@ popd
 if not "%RC%"=="0" exit /b %RC%
 
 echo.
-echo Built: %ROOT%\dist\AnythingToMarkdown\AnythingToMarkdown.exe
+echo Built: %ROOT%\dist\AnythingToMarkdown.exe
 echo Double-click AnythingToMarkdown.exe to launch the GUI.
 endlocal
