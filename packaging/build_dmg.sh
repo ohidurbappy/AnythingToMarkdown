@@ -9,6 +9,10 @@ APP="$ROOT/dist/AnythingToMarkdown.app"
 VENV="$ROOT/.venv"
 VOLNAME="AnythingToMarkdown"
 
+# Use the venv's Python locally, or whatever Python is on PATH in CI.
+PY="$VENV/bin/python"
+[ -x "$PY" ] || PY="$(command -v python3 || command -v python)"
+
 # Build the .app first if it isn't there yet.
 if [ ! -d "$APP" ]; then
     echo "App not found — building it first…"
@@ -16,7 +20,7 @@ if [ ! -d "$APP" ]; then
 fi
 
 # Resolve the version for the output filename (falls back gracefully).
-VERSION="$("$VENV/bin/python" -c "import sys; sys.path.insert(0,'$ROOT'); import anytomd; print(anytomd.__version__)" 2>/dev/null || echo "1.0.0")"
+VERSION="$("$PY" -c "import sys; sys.path.insert(0,'$ROOT'); import anytomd; print(anytomd.__version__)" 2>/dev/null || echo "1.0.0")"
 DMG="$ROOT/dist/AnythingToMarkdown-$VERSION.dmg"
 
 echo "Packaging $APP -> $DMG"

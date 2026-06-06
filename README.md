@@ -87,6 +87,26 @@ make open-app            :: opens the folder in Explorer
 
 ---
 
+## Automated builds & releases (GitHub Actions)
+
+The repo ships a CI workflow ([.github/workflows/build.yml](.github/workflows/build.yml)) that builds both platforms and publishes them to a GitHub Release:
+
+- **macOS** → `AnythingToMarkdown-<version>.dmg`
+- **Windows** → `AnythingToMarkdown-<version>-windows-x64.zip`
+
+**To cut a release**, push a version tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The workflow builds on `macos-latest` and `windows-latest`, then attaches both files to a release named after the tag (with auto-generated notes). You can also trigger it manually from the **Actions** tab (without releasing) to test a build.
+
+> The CI-built artifacts are **unsigned**. For signed/notarized macOS builds, run `make notarize` locally with your Developer ID (see below), or add your signing secrets to the workflow.
+
+---
+
 ## Make targets
 
 Common tasks are wrapped up for you. On **macOS/Linux** use `make` (run `make help` to list targets); on **Windows** use the bundled `make.bat` (no GNU Make needed) — the targets are identical.
