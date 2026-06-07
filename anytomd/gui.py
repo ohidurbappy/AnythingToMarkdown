@@ -2,6 +2,9 @@
 
 Design goals: a clean, modern, professional look; obvious drag-and-drop; and
 batch conversion that never freezes the UI (work runs on a background thread).
+
+Files are shown in a single table (Serial / Input / Output / Status), so the
+input, its destination, and its progress all live in one place.
 """
 
 from __future__ import annotations
@@ -11,24 +14,25 @@ from pathlib import Path
 from typing import List, Optional
 
 from PySide6.QtCore import Qt, QThread, Signal, QObject
-from PySide6.QtGui import QAction, QColor, QFont, QKeySequence, QPalette
+from PySide6.QtGui import QAction, QColor, QKeySequence, QPalette
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
     QCheckBox,
     QFileDialog,
     QFrame,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
     QMainWindow,
     QMessageBox,
     QProgressBar,
-    QPlainTextEdit,
     QPushButton,
     QSizePolicy,
     QStatusBar,
     QStyle,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -43,6 +47,16 @@ _DIALOG_FILTER = (
     + " ".join(f"*{ext}" for ext in SUPPORTED_EXTENSIONS)
     + ");;All files (*)"
 )
+
+# The active palette is stored here once the theme is applied so widgets that
+# need to colour themselves at runtime (status badges) can match it.
+ACTIVE_PALETTE: _theme.Palette = _theme.LIGHT
+
+# Table column indices.
+COL_SERIAL = 0
+COL_INPUT = 1
+COL_OUTPUT = 2
+COL_STATUS = 3
 
 
 class ConversionWorker(QObject):
@@ -99,20 +113,38 @@ class ConversionWorker(QObject):
         self.finished.emit(succeeded, failed)
 
 
-class DropList(QListWidget):
-    """A QListWidget that accepts dropped files/folders and shows an empty state."""
+class DropTable(QTableWidget):
+    """A QTableWidget that accepts dropped files/folders and shows an empty state."""
 
     files_dropped = Signal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("DropList")
+        self.setObjectName("FileTable")
         self.setAcceptDrops(True)
-        self.setSelectionMode(QListWidget.ExtendedSelection)
         self.setFrameShape(QFrame.NoFrame)
         self.setProperty("dragActive", False)
 
-        # Centered empty-state overlay shown when the list has no items.
+        self.setColumnCount(4)
+        self.setHorizontalHeaderLabels(["#", "Input", "Output", "Status"])
+        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.setShowGrid(False)
+        self.setWordWrap(False)
+        self.setAlternatingRowColors(True)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+
+        header = self.horizontalHeader()
+        header.setHighlightSections(False)
+        header.setSectionResizeMode(COL_SERIAL, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(COL_INPUT, QHeaderView.Stretch)
+        header.setSectionResizeMode(COL_OUTPUT, QHeaderView.Stretch)
+        header.setSectionResizeMode(COL_STATUS, QHeaderView.ResizeToContents)
+        self.verticalHeader().setVisible(False)
+        self.verticalHeader().setDefaultSectionSize(34)
+
+        # Centered empty-state overlay shown when the table has no rows.
         self._overlay = QWidget(self)
         ov = QVBoxLayout(self._overlay)
         ov.setAlignment(Qt.AlignCenter)
@@ -142,12 +174,18 @@ class DropList(QListWidget):
             self.style().polish(self)
 
     def refresh_overlay(self) -> None:
-        self._overlay.setVisible(self.count() == 0)
-        self._overlay.setGeometry(self.rect())
+        self._overlay.setVisible(self.rowCount() == 0)
+        self._position_overlay()
+
+    def _position_overlay(self) -> None:
+        top = self.horizontalHeader().height()
+        self._overlay.setGeometry(
+            0, top, self.viewport().width(), self.viewport().height()
+        )
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._overlay.setGeometry(self.rect())
+        self._position_overlay()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -183,12 +221,19 @@ def _card(*, object_name: str = "Card") -> QFrame:
     return frame
 
 
+# Status presentation: (label, palette-colour-attribute).
+_STATUS_QUEUED = ("Queued", "muted")
+_STATUS_CONVERTING = ("Converting…", "accent")
+_STATUS_DONE = ("✓ Done", "success")
+_STATUS_FAILED = ("✗ Failed", "danger")
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"{__app_name__}")
-        self.resize(880, 680)
-        self.setMinimumSize(640, 520)
+        self.resize(940, 700)
+        self.setMinimumSize(720, 540)
 
         self._files: List[Path] = []
         self._output_dir: Optional[Path] = None
@@ -210,10 +255,9 @@ class MainWindow(QMainWindow):
         outer.setSpacing(16)
 
         outer.addLayout(self._build_header())
-        outer.addWidget(self._build_drop_card(), stretch=1)
+        outer.addWidget(self._build_table_card(), stretch=1)
         outer.addWidget(self._build_options_card())
         outer.addLayout(self._build_action_row())
-        outer.addWidget(self._build_console())
 
         self.setCentralWidget(root)
         self.setStatusBar(QStatusBar())
@@ -249,7 +293,7 @@ class MainWindow(QMainWindow):
         row.addWidget(ver)
         return row
 
-    def _build_drop_card(self) -> QFrame:
+    def _build_table_card(self) -> QFrame:
         card = _card()
         lay = QVBoxLayout(card)
         lay.setContentsMargins(16, 14, 16, 16)
@@ -265,12 +309,10 @@ class MainWindow(QMainWindow):
         head.addWidget(self.count_label)
         lay.addLayout(head)
 
-        self.file_list = DropList()
-        self.file_list.files_dropped.connect(self._add_paths)
-        self.file_list.model().rowsInserted.connect(lambda *_: self.file_list.refresh_overlay())
-        self.file_list.model().rowsRemoved.connect(lambda *_: self.file_list.refresh_overlay())
-        lay.addWidget(self.file_list, stretch=1)
-        self.file_list.refresh_overlay()
+        self.file_table = DropTable()
+        self.file_table.files_dropped.connect(self._add_paths)
+        lay.addWidget(self.file_table, stretch=1)
+        self.file_table.refresh_overlay()
 
         # File-management buttons
         btns = QHBoxLayout()
@@ -345,15 +387,6 @@ class MainWindow(QMainWindow):
         row.addWidget(self.btn_convert)
         return row
 
-    def _build_console(self) -> QPlainTextEdit:
-        self.log = QPlainTextEdit()
-        self.log.setObjectName("Console")
-        self.log.setReadOnly(True)
-        self.log.setFixedHeight(132)
-        self.log.setFont(QFont("Menlo, Monaco, Consolas, monospace", 11))
-        self.log.setPlaceholderText("Conversion results will appear here…")
-        return self.log
-
     def _mk_button(self, text, std_icon, slot) -> QPushButton:
         btn = QPushButton(text)
         if std_icon is not None:
@@ -386,6 +419,64 @@ class MainWindow(QMainWindow):
         help_menu.addAction(act_about)
 
     # ------------------------------------------------------------------ #
+    # Table helpers
+    # ------------------------------------------------------------------ #
+    def _output_path_for(self, src: Path) -> Path:
+        """Destination path a file would be written to with current settings."""
+        if self._output_dir is not None:
+            return self._output_dir / (src.stem + ".md")
+        return src.with_suffix(".md")
+
+    def _set_status(self, row: int, status: tuple[str, str]) -> None:
+        label, colour_attr = status
+        item = self.file_table.item(row, COL_STATUS)
+        if item is None:
+            return
+        item.setText(label)
+        item.setForeground(QColor(getattr(ACTIVE_PALETTE, colour_attr)))
+
+    def _append_row(self, path: Path) -> None:
+        row = self.file_table.rowCount()
+        self.file_table.insertRow(row)
+
+        serial = QTableWidgetItem(str(row + 1))
+        serial.setTextAlignment(Qt.AlignCenter)
+        serial.setForeground(QColor(ACTIVE_PALETTE.muted))
+
+        inp = QTableWidgetItem(path.name)
+        inp.setIcon(self.style().standardIcon(QStyle.SP_FileIcon))
+        inp.setToolTip(str(path))
+
+        out_path = self._output_path_for(path)
+        out = QTableWidgetItem(out_path.name)
+        out.setForeground(QColor(ACTIVE_PALETTE.muted))
+        out.setToolTip(str(out_path))
+
+        status = QTableWidgetItem(_STATUS_QUEUED[0])
+        status.setTextAlignment(Qt.AlignCenter)
+        status.setForeground(QColor(ACTIVE_PALETTE.muted))
+
+        self.file_table.setItem(row, COL_SERIAL, serial)
+        self.file_table.setItem(row, COL_INPUT, inp)
+        self.file_table.setItem(row, COL_OUTPUT, out)
+        self.file_table.setItem(row, COL_STATUS, status)
+
+    def _refresh_output_column(self) -> None:
+        """Recompute the Output column after the destination setting changes."""
+        for row, src in enumerate(self._files):
+            out_path = self._output_path_for(src)
+            item = self.file_table.item(row, COL_OUTPUT)
+            if item is not None:
+                item.setText(out_path.name)
+                item.setToolTip(str(out_path))
+
+    def _renumber(self) -> None:
+        for row in range(self.file_table.rowCount()):
+            item = self.file_table.item(row, COL_SERIAL)
+            if item is not None:
+                item.setText(str(row + 1))
+
+    # ------------------------------------------------------------------ #
     # File management
     # ------------------------------------------------------------------ #
     def _add_paths(self, paths: List[Path]) -> None:
@@ -396,15 +487,13 @@ class MainWindow(QMainWindow):
             if p not in existing:
                 self._files.append(p)
                 existing.add(p)
-                item = QListWidgetItem(str(p))
-                item.setIcon(self.style().standardIcon(QStyle.SP_FileIcon))
-                item.setToolTip(str(p))
-                self.file_list.addItem(item)
+                self._append_row(p)
                 added += 1
         if added:
             self.statusBar().showMessage(f"Added {added} file(s).", 4000)
         elif paths:
             self.statusBar().showMessage("No new convertible files found.", 4000)
+        self.file_table.refresh_overlay()
         self._refresh_state()
 
     def _choose_files(self) -> None:
@@ -420,18 +509,21 @@ class MainWindow(QMainWindow):
             self._add_paths([Path(folder)])
 
     def _remove_selected(self) -> None:
-        for item in self.file_list.selectedItems():
-            row = self.file_list.row(item)
-            self.file_list.takeItem(row)
-            try:
-                self._files.remove(Path(item.text()))
-            except ValueError:
-                pass
+        rows = sorted(
+            {idx.row() for idx in self.file_table.selectedIndexes()},
+            reverse=True,
+        )
+        for row in rows:
+            self.file_table.removeRow(row)
+            del self._files[row]
+        self._renumber()
+        self.file_table.refresh_overlay()
         self._refresh_state()
 
     def _clear_files(self) -> None:
-        self.file_list.clear()
+        self.file_table.setRowCount(0)
         self._files.clear()
+        self.file_table.refresh_overlay()
         self._refresh_state()
 
     # ------------------------------------------------------------------ #
@@ -441,10 +533,12 @@ class MainWindow(QMainWindow):
         folder = QFileDialog.getExistingDirectory(self, "Select output folder")
         if folder:
             self._output_dir = Path(folder)
+            self._refresh_output_column()
             self._refresh_state()
 
     def _clear_output_dir(self) -> None:
         self._output_dir = None
+        self._refresh_output_column()
         self._refresh_state()
 
     # ------------------------------------------------------------------ #
@@ -454,9 +548,10 @@ class MainWindow(QMainWindow):
         if not self._files or self._thread is not None:
             return
 
-        self.log.clear()
         self.progress.setRange(0, len(self._files))
         self.progress.setValue(0)
+        for row in range(self.file_table.rowCount()):
+            self._set_status(row, _STATUS_QUEUED)
         self._set_running(True)
 
         self._thread = QThread()
@@ -480,18 +575,29 @@ class MainWindow(QMainWindow):
 
     def _on_progress(self, done: int, total: int, res: ConversionResult) -> None:
         self.progress.setValue(done)
-        if res.success:
-            dest = res.output_path.name if res.output_path else "(in memory)"
-            self.log.appendPlainText(f"  ✓  {res.source.name}  →  {dest}")
-        else:
-            self.log.appendPlainText(f"  ✗  {res.source.name}  —  {res.error}")
+        row = done - 1  # files are processed in table order
+        if 0 <= row < self.file_table.rowCount():
+            if res.success:
+                self._set_status(row, _STATUS_DONE)
+                if res.output_path is not None:
+                    out = self.file_table.item(row, COL_OUTPUT)
+                    if out is not None:
+                        out.setText(res.output_path.name)
+                        out.setToolTip(str(res.output_path))
+                        out.setForeground(QColor(ACTIVE_PALETTE.text))
+            else:
+                self._set_status(row, _STATUS_FAILED)
+                status = self.file_table.item(row, COL_STATUS)
+                if status is not None and res.error:
+                    status.setToolTip(res.error)
+        # Light-touch "in progress" hint for the next file.
+        nxt = done
+        if nxt < self.file_table.rowCount():
+            self._set_status(nxt, _STATUS_CONVERTING)
 
     def _on_finished(self, succeeded: int, failed: int) -> None:
         self._teardown_thread()
         self._set_running(False)
-        self.log.appendPlainText(
-            f"\nDone — {succeeded} succeeded, {failed} failed."
-        )
         msg = f"Finished: {succeeded} succeeded, {failed} failed."
         self.statusBar().showMessage(msg, 8000)
         if failed == 0 and succeeded > 0:
@@ -596,8 +702,10 @@ def _checkmark_url() -> str:
 
 
 def apply_theme(app: QApplication) -> None:
+    global ACTIVE_PALETTE
     app.setStyle("Fusion")
     palette = _theme.DARK if _is_dark(app) else _theme.LIGHT
+    ACTIVE_PALETTE = palette
     try:
         check = _checkmark_url()
     except Exception:

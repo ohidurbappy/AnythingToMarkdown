@@ -102,30 +102,44 @@ def stylesheet(p: Palette, check_url: str = "") -> str:
         letter-spacing: 0.6px;
     }}
 
-    /* Drop zone (the file list) */
-    #DropList {{
+    /* Drop zone / file table */
+    #FileTable {{
         background: {p.surface};
         border: 2px dashed {p.border};
         border-radius: 12px;
-        padding: 6px;
+        padding: 4px;
         outline: 0;
+        gridline-color: transparent;
+        alternate-background-color: {p.surface_alt};
+        selection-background-color: {p.accent};
+        selection-color: {p.on_accent};
     }}
-    #DropList[dragActive="true"] {{
+    #FileTable[dragActive="true"] {{
         border: 2px dashed {p.accent};
         background: {p.drop_bg};
     }}
-    #DropList::item {{
-        padding: 7px 9px;
-        border-radius: 7px;
-        margin: 1px 2px;
+    #FileTable::item {{
+        padding: 6px 10px;
+        border: none;
         color: {p.text};
     }}
-    #DropList::item:selected {{
+    #FileTable::item:selected {{
         background: {p.accent};
         color: {p.on_accent};
     }}
-    #DropList::item:hover:!selected {{
+    QHeaderView::section {{
         background: {p.surface_alt};
+        color: {p.muted};
+        border: none;
+        border-bottom: 1px solid {p.border};
+        padding: 8px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+    }}
+    QTableCornerButton::section {{
+        background: {p.surface_alt};
+        border: none;
     }}
     #DropHint {{
         color: {p.muted};
@@ -237,15 +251,6 @@ def stylesheet(p: Palette, check_url: str = "") -> str:
         background: {p.accent};
         border-radius: 7px;
         margin: 1px;
-    }}
-
-    /* Console / log */
-    #Console {{
-        background: {p.surface_alt};
-        border: 1px solid {p.border};
-        border-radius: 10px;
-        padding: 8px;
-        color: {p.text};
     }}
 
     /* Scrollbars */
