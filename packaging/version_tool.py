@@ -46,6 +46,19 @@ def read_version() -> str:
     return match.group(1)
 
 
+def read_app_name() -> str:
+    """Read __app_name__ out of anytomd/__init__.py, without importing it.
+
+    The display name shown in the GUI, the Start menu, the MSIX tile and the
+    Store art all come from here, so they cannot drift apart.
+    """
+    text = INIT_PY.read_text(encoding="utf-8")
+    match = re.search(r'^__app_name__\s*=\s*["\']([^"\']+)["\']', text, re.M)
+    if not match:
+        raise SystemExit(f"Could not find __app_name__ in {INIT_PY}")
+    return match.group(1)
+
+
 def msix_version(version: str, revision: int = 0) -> str:
     """Turn a semver string into the four-part version MSIX requires.
 
@@ -111,6 +124,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("get", help="Print the current version (1.2.3)")
+    sub.add_parser("app-name", help="Print the display name (__app_name__)")
 
     p_msix = sub.add_parser("msix", help="Print the four-part MSIX version")
     p_msix.add_argument(
@@ -128,6 +142,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "get":
         print(read_version())
+    elif args.command == "app-name":
+        print(read_app_name())
     elif args.command == "msix":
         print(msix_version(read_version(), args.revision))
     elif args.command == "check":

@@ -75,6 +75,20 @@ def check_identity() -> list[str]:
             f"identity.json: displayName is {len(display)} chars; the tile "
             "ShortName is truncated past 40"
         )
+
+    # The name Windows shows must match the name the app shows about itself,
+    # or the Start menu entry and the window title disagree.
+    init_py = HERE.parent.parent / "anytomd" / "__init__.py"
+    match = re.search(
+        r'^__app_name__\s*=\s*["\']([^"\']+)["\']',
+        init_py.read_text(encoding="utf-8"),
+        re.M,
+    )
+    if match and display and match.group(1) != display:
+        problems.append(
+            f"identity.json displayName {display!r} does not match "
+            f"anytomd.__app_name__ {match.group(1)!r}"
+        )
     return problems
 
 
