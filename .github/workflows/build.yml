@@ -1,8 +1,9 @@
 name: Build & Release
 
-# Build the macOS .dmg and Windows .zip. On a version tag (e.g. v1.0.0) the
-# artifacts are published to a GitHub Release. You can also run it manually
-# from the Actions tab (workflow_dispatch) to test a build without releasing.
+# Builds the macOS .dmg, the standalone Windows .exe and the Windows .msix
+# (for the Microsoft Store). On a version tag (e.g. v1.0.0) everything is
+# published to a GitHub Release. You can also run it manually from the Actions
+# tab (workflow_dispatch) to test a build without releasing.
 on:
   push:
     tags:
@@ -17,8 +18,55 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # One place decides the version for every downstream job, so the .dmg, the
+  # .exe and the .msix can never disagree about what they are.
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      msix_version: ${{ steps.resolve.outputs.msix_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # A tag that disagrees with anytomd.__version__ would ship artifacts
+      # labelled with one number and reporting another. Fail before building.
+      - name: Check the tag matches anytomd.__version__
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: python packaging/version_tool.py check --tag "${GITHUB_REF_NAME}"
+
+      - name: Resolve version numbers
+        id: resolve
+        run: |
+          version="$(python packaging/version_tool.py get)"
+          # The Store reserves the fourth version part, so tagged (submittable)
+          # builds must use .0. Untagged test builds get the run number there,
+          # which keeps sideloaded installs upgradable without colliding.
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            revision=0
+          else
+            revision="${GITHUB_RUN_NUMBER}"
+          fi
+          msix_version="$(python packaging/version_tool.py msix --revision "$revision")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "msix_version=$msix_version" >> "$GITHUB_OUTPUT"
+          echo "Version $version, MSIX $msix_version"
+
+      - name: Validate the MSIX manifest and the Store listing
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pillow
+          python packaging/msix/check_manifest.py
+          python store/validate_listing.py
+
+  # ---------------------------------------------------------------------------
   build-macos:
     name: Build macOS (.dmg)
+    needs: version
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +104,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-windows:
     name: Build Windows (.exe)
+    needs: version
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,8 +130,7 @@ jobs:
       - name: Name the executable with version
         shell: pwsh
         run: |
-          $ver = python -c "import anytomd; print(anytomd.__version__)"
-          $out = "dist/AnythingToMarkdown-$ver-windows-x64.exe"
+          $out = "dist/AnythingToMarkdown-${{ needs.version.outputs.version }}-windows-x64.exe"
           Move-Item dist/AnythingToMarkdown.exe $out -Force
           Write-Host "Built $out"
 
@@ -94,9 +142,84 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
+  # The Microsoft Store package. Built from the one-folder PyInstaller layout
+  # (see packaging/msix/README.md) and left unsigned — Partner Center signs
+  # Store packages itself.
+  build-msix:
+    name: Build Windows (.msix)
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Generate icon
+        run: python packaging/make_icon.py
+
+      # The committed assets are regenerated so a change to packaging/brand.py
+      # can never leave stale tiles in the package.
+      - name: Regenerate MSIX tile assets
+        run: python packaging/msix/make_msix_assets.py
+
+      - name: Syntax-check the packaging scripts
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem packaging/msix -Filter *.ps1 | ForEach-Object {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName, [ref]$null, [ref]$errors) | Out-Null
+            if ($errors) {
+              $failed = $true
+              Write-Host "::error file=$($_.FullName)::$($errors | Out-String)"
+            } else {
+              Write-Host "OK  $($_.Name)"
+            }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Build one-folder payload
+        working-directory: packaging
+        env:
+          BUILD_ONEDIR: "1"
+        run: |
+          pyinstaller AnythingToMarkdown.spec --noconfirm --clean `
+            --distpath ../dist --workpath ../build
+
+      # The Store identity lives in packaging/msix/identity.json. The MSIX_*
+      # repository variables are an optional override for forks — when unset
+      # they arrive empty and the committed identity is used.
+      - name: Pack .msix
+        shell: pwsh
+        env:
+          MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+          MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+          MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
+        run: |
+          ./packaging/msix/build_msix.ps1 `
+            -Version "${{ needs.version.outputs.msix_version }}" `
+            -Payload "dist/AnythingToMarkdown" `
+            -OutDir "dist"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msix
+          path: dist/*.msix
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
   release:
     name: Publish release
-    needs: [build-macos, build-windows]
+    needs: [version, build-macos, build-windows, build-msix]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -111,3 +234,15 @@ jobs:
           files: artifacts/**/*
           generate_release_notes: true
           fail_on_unmatched_files: true
+          body: |
+            ## Downloads
+
+            | Platform | File |
+            | --- | --- |
+            | Windows (Microsoft Store) | `AnythingToMarkdown-${{ needs.version.outputs.msix_version }}-x64.msix` |
+            | Windows (standalone) | `AnythingToMarkdown-${{ needs.version.outputs.version }}-windows-x64.exe` |
+            | macOS | `AnythingToMarkdown-${{ needs.version.outputs.version }}.dmg` |
+
+            The `.msix` is unsigned on purpose: it is the package uploaded to
+            Partner Center, which signs Store packages itself. To install it
+            directly instead, see [packaging/msix/README.md](packaging/msix/README.md).

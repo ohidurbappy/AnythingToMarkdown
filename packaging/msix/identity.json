@@ -1,0 +1,14 @@
+{
+  "_comment": [
+    "Microsoft Store product identity, copied verbatim from Partner Center >",
+    "Product management > Product identity. These three values must match the",
+    "reserved product exactly or Partner Center rejects the upload.",
+    "Not secret: they ship inside every package. Override for a fork with the",
+    "MSIX_IDENTITY_NAME / MSIX_PUBLISHER / MSIX_PUBLISHER_DISPLAY_NAME",
+    "environment variables, or the matching build_msix.ps1 parameters."
+  ],
+  "identityName": "ORBApps.AnythingToMarkdown",
+  "publisher": "CN=B120898B-B56C-415B-ACE0-6AD3877F041E",
+  "publisherDisplayName": "ORB Apps",
+  "displayName": "AnythingToMarkdown"
+}

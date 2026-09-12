@@ -1,0 +1,45 @@
+AnythingToMarkdown turns the documents you already have into clean, readable Markdown.
+
+Drag a stack of files onto the window, press Convert to Markdown, and get a .md file for each one. No sign-in, no upload, no subscription.
+
+WHY MARKDOWN
+Markdown is plain text, so it is easy to diff, search, version-control and paste into wikis, static site generators, note apps and AI tools. Getting your existing PDFs and Office documents into that form is usually the tedious part. This app is that step, and nothing else.
+
+WHAT IT CONVERTS
+• PDF
+• Word (.docx, .doc)
+• Excel (.xlsx, .xls)
+• PowerPoint (.pptx, .ppt)
+• HTML web pages
+• CSV, JSON and XML data
+• EPUB e-books
+• Outlook messages (.msg)
+• ZIP archives (each file inside is converted)
+• Plain text, Markdown and reStructuredText
+
+Images and audio files are also accepted. Images produce their embedded metadata, and audio produces a transcript — both of these depend on optional helper tools being installed on your PC (ExifTool for image metadata, FFmpeg for audio). Every other format above works straight away.
+
+BUILT FOR BATCHES
+Add whole folders, not just files. The app walks subfolders, lists everything it found in one table, and shows you the input file, the Markdown file it will write, and the status of each row as it works. Conversion runs in the background, so the window stays responsive and you can cancel at any point.
+
+Write the results next to the original documents, or send them all to one output folder. Existing .md files can be overwritten or kept — your choice.
+
+A REAL COMMAND LINE
+The same converter is available from PowerShell, Command Prompt and Windows Terminal as "anytomd", installed automatically with the app:
+
+  anytomd report.pdf
+  anytomd *.docx -o markdown\
+  anytomd .\docs -r -o markdown\
+  anytomd notes.pdf --stdout
+
+That makes it easy to script bulk conversions or wire the app into an existing pipeline. Run "anytomd --help" for the full list of options.
+
+RIGHT-CLICK FROM FILE EXPLORER
+The app registers itself for the document types it can handle, so you can right-click a PDF or a Word file, choose Open with, and pick AnythingToMarkdown. The file arrives queued and ready — you still decide where the Markdown goes before anything is written.
+
+YOUR FILES STAY YOURS
+Conversion happens entirely on your PC. The app has no accounts, no telemetry and no network features: it does not send your documents anywhere, and it works with no internet connection at all.
+
+OPEN SOURCE
+AnythingToMarkdown is free and open source under the MIT licence, and is built on the open-source MarkItDown conversion engine. You can read every line of it, file an issue, or build it yourself:
+https://github.com/ohidurbappy/AnythingToMarkdown

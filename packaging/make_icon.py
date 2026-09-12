@@ -1,37 +1,25 @@
-"""Generate the macOS app icon set (packaging/AppIcon.iconset).
+"""Generate the desktop app icons.
 
-Run via `make icon`, which then calls `iconutil` to produce AppIcon.icns.
-Pillow ships with MarkItDown, so no extra dependency is needed.
+  * packaging/AppIcon.iconset/  — PNGs that `iconutil` turns into AppIcon.icns
+  * packaging/AppIcon.ico       — multi-resolution Windows icon
+
+Run via `make icon`. The artwork itself lives in packaging/brand.py so the
+macOS/Windows icons, the MSIX tiles and the Store images can never drift
+apart. Pillow ships with MarkItDown, so no extra dependency is needed.
 """
 
+import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw
-
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+
+from brand import app_icon  # noqa: E402  (needs the sys.path tweak above)
 
 
-def make(size: int) -> Image.Image:
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    s = size
-    # Rounded blue background tile (macOS-style).
-    pad = int(s * 0.08)
-    r = int(s * 0.22)
-    d.rounded_rectangle([pad, pad, s - pad, s - pad], radius=r, fill=(37, 99, 235, 255))
-    # White document page.
-    dx0, dy0, dx1, dy1 = int(s * 0.30), int(s * 0.24), int(s * 0.70), int(s * 0.76)
-    d.rounded_rectangle([dx0, dy0, dx1, dy1], radius=int(s * 0.04), fill=(255, 255, 255, 255))
-    # Down arrow suggesting conversion.
-    cx = s // 2
-    ax0, ax1 = int(s * 0.42), int(s * 0.58)
-    ay0, ay1 = int(s * 0.34), int(s * 0.56)
-    d.rectangle([cx - int(s * 0.025), ay0, cx + int(s * 0.025), ay1], fill=(37, 99, 235, 255))
-    d.polygon(
-        [(ax0, ay1 - int(s * 0.02)), (ax1, ay1 - int(s * 0.02)), (cx, int(s * 0.66))],
-        fill=(37, 99, 235, 255),
-    )
-    return img
+def make(size: int):
+    """Backwards-compatible alias for the shared artwork routine."""
+    return app_icon(size)
 
 
 def main() -> None:
@@ -42,13 +30,13 @@ def main() -> None:
              (128, 2), (256, 1), (256, 2), (512, 1), (512, 2)]
     for base, scale in specs:
         name = f"icon_{base}x{base}{'@2x' if scale == 2 else ''}.png"
-        make(base * scale).save(iconset / name)
+        app_icon(base * scale).save(iconset / name)
     print(f"Wrote {len(specs)} PNGs to {iconset}")
 
     # Windows .ico (multi-resolution, used by the Windows PyInstaller build).
     ico_path = HERE / "AppIcon.ico"
     sizes = [16, 24, 32, 48, 64, 128, 256]
-    make(256).save(ico_path, format="ICO", sizes=[(s, s) for s in sizes])
+    app_icon(256).save(ico_path, format="ICO", sizes=[(s, s) for s in sizes])
     print(f"Wrote {ico_path}")
 
 

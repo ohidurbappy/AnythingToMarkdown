@@ -83,6 +83,43 @@ icon: install ## Regenerate the macOS app icon (packaging/AppIcon.icns)
 	iconutil -c icns packaging/AppIcon.iconset -o packaging/AppIcon.icns
 	@echo "Wrote packaging/AppIcon.icns"
 
+# ---- Microsoft Store --------------------------------------------------------
+# The .msix itself can only be packed on Windows (it needs the Windows SDK) —
+# use make.bat there. These targets cover everything that is cross-platform.
+.PHONY: msix-assets
+msix-assets: install ## Regenerate the MSIX tile/logo images
+	$(PYTHON) packaging/msix/make_msix_assets.py
+
+.PHONY: store-assets
+store-assets: install ## Regenerate the Store logos and promotional art
+	$(PYTHON) store/make_store_assets.py
+
+.PHONY: screenshots
+screenshots: install ## Re-capture the Store screenshots from the running app
+	$(PYTHON) store/make_screenshots.py
+
+.PHONY: msix-check
+msix-check: install ## Validate the MSIX manifest (no Windows needed)
+	$(PYTHON) packaging/msix/check_manifest.py
+
+.PHONY: store-check
+store-check: install ## Check the Store listing against Partner Center's limits
+	$(PYTHON) packaging/msix/check_manifest.py
+	$(PYTHON) store/validate_listing.py
+
+.PHONY: store
+store: msix-assets store-assets screenshots store-check ## Regenerate every Store asset, then check them
+
+# ---- Versioning -------------------------------------------------------------
+.PHONY: version
+version: ## Print the current version
+	@$(PYTHON) packaging/version_tool.py get
+
+.PHONY: set-version
+set-version: ## Set the version everywhere, e.g. make set-version VERSION=1.1.0
+	@test -n "$(VERSION)" || { echo "Usage: make set-version VERSION=1.1.0" >&2; exit 1; }
+	$(PYTHON) packaging/version_tool.py set $(VERSION)
+
 # ---- Housekeeping ----------------------------------------------------------
 .PHONY: clean
 clean: ## Remove build/dist artifacts (keeps the venv)

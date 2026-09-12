@@ -1,0 +1,1 @@
+Turn PDFs, Word, Excel, PowerPoint, HTML, CSV and more into clean Markdown. Drag files in, press Convert, get .md files out. Batch conversion, a real command line, and everything runs on your PC — nothing is uploaded.

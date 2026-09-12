@@ -98,6 +98,10 @@ class Converter:
 
         self._md = MarkItDown(enable_plugins=enable_plugins)
 
+        # Output paths written by this Converter, so a later file in the same
+        # run can never be handed a name an earlier one already took.
+        self._claimed: set[Path] = set()
+
     # ------------------------------------------------------------------ #
     # Single-file conversion
     # ------------------------------------------------------------------ #
@@ -138,8 +142,7 @@ class Converter:
         if target is not None:
             try:
                 target.parent.mkdir(parents=True, exist_ok=True)
-                if target.exists() and not overwrite:
-                    target = _dedupe_path(target)
+                target = self._claim_output(target, src, overwrite)
                 target.write_text(markdown, encoding="utf-8")
             except OSError as exc:
                 return ConversionResult(
@@ -150,6 +153,30 @@ class Converter:
         return ConversionResult(
             src, True, output_path=target, markdown=markdown, title=title,
         )
+
+    def _claim_output(self, target: Path, source: Path, overwrite: bool) -> Path:
+        """Reserve a free output path and remember it for the rest of the run.
+
+        A path this Converter already wrote is never handed out twice:
+        ``overwrite`` permits replacing files left by *earlier* runs, not one
+        just produced. Inputs sharing a stem (``notes.csv`` and ``notes.html``
+        both map to ``notes.md``) would otherwise silently clobber each other,
+        so the later one is tagged with its source extension —
+        ``notes-html.md`` — which stays stable when the batch is re-run.
+        """
+        def taken(path: Path) -> bool:
+            if path.resolve() in self._claimed:
+                return True
+            return path.exists() and not overwrite
+
+        if taken(target):
+            ext = source.suffix.lstrip(".").lower()
+            if ext and target.resolve() in self._claimed:
+                target = target.with_name(f"{target.stem}-{ext}{target.suffix}")
+            target = _dedupe_path(target, taken)
+
+        self._claimed.add(target.resolve())
+        return target
 
     # ------------------------------------------------------------------ #
     # Batch conversion
@@ -174,15 +201,15 @@ class Converter:
         return summary
 
 
-def _dedupe_path(path: Path) -> Path:
-    """Return a non-existing path by appending ' (1)', ' (2)', ... if needed."""
-    if not path.exists():
+def _dedupe_path(path: Path, taken: Callable[[Path], bool]) -> Path:
+    """Return a path ``taken`` rejects, appending ' (1)', ' (2)', ... if needed."""
+    if not taken(path):
         return path
     stem, suffix, parent = path.stem, path.suffix, path.parent
     n = 1
     while True:
         candidate = parent / f"{stem} ({n}){suffix}"
-        if not candidate.exists():
+        if not taken(candidate):
             return candidate
         n += 1
 

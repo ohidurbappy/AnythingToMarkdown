@@ -1,0 +1,3 @@
+01-drop-files.png | Drag documents straight onto the window, or browse for files and folders.
+02-batch-queued.png | Every queued file shows the Markdown it will produce before anything is written.
+03-conversion-complete.png | A mixed batch of PDF, Excel, PowerPoint, HTML and CSV converted in one pass.

@@ -1,0 +1,9 @@
+Minimum
+  OS          Windows 10 version 1809 (build 17763) or later
+  Architecture x64
+  Memory      4 GB RAM
+  Storage     600 MB free disk space
+
+Optional extras, only needed for two file types
+  FFmpeg      required to transcribe audio files
+  ExifTool    required to read image metadata

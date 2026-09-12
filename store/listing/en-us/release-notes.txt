@@ -1,0 +1,7 @@
+1.0.0 — First Microsoft Store release.
+
+• Drag-and-drop batch conversion for PDF, Word, Excel, PowerPoint, HTML, CSV, JSON, XML, EPUB and Outlook .msg
+• Choose a single output folder, or write Markdown alongside each source document
+• Per-file status table with cancel support
+• "anytomd" command line available from PowerShell and Windows Terminal
+• Open the app directly from File Explorer's "Open with" menu
