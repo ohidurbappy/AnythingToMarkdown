@@ -1,4 +1,4 @@
-AnythingToMarkdown is distributed under the MIT Licence.
+Anything To Markdown is distributed under the MIT Licence.
 
 It bundles third-party open-source components, each under its own licence:
 • MarkItDown (MIT) — the document conversion engine

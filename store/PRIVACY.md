@@ -1,8 +1,8 @@
-# Privacy Policy — AnythingToMarkdown
+# Privacy Policy — Anything To Markdown
 
 **Last updated:** 12 September 2026
 
-AnythingToMarkdown is a desktop application that converts documents on your own
+Anything To Markdown is a desktop application that converts documents on your own
 computer into Markdown files.
 
 ## The short version
@@ -21,7 +21,7 @@ with no internet connection at all.
 
 ## Data we collect
 
-None. Specifically, AnythingToMarkdown has:
+None. Specifically, Anything To Markdown has:
 
 - no user accounts, sign-in or registration
 - no analytics, telemetry, crash reporting or usage tracking

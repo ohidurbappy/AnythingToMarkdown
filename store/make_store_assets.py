@@ -24,10 +24,11 @@ sys.path.insert(0, str(ROOT / "packaging"))
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 
 from brand import mark  # noqa: E402
+from version_tool import read_app_name  # noqa: E402
 
 DEFAULT_OUT = ROOT / "store" / "assets"
 
-APP_NAME = "AnythingToMarkdown"
+APP_NAME = read_app_name()   # single source: anytomd.__app_name__
 TAGLINE = "Convert documents to clean Markdown"
 
 # Vertical gradient: brand blue into a deeper blue, so the white mark and
