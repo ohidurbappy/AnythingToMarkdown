@@ -3,7 +3,7 @@
 A lightweight cross-platform GUI + CLI tool powered by Microsoft's MarkItDown.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __app_name__ = "AnythingToMarkdown"
 
 from .converter import (
