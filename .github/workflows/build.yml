@@ -234,6 +234,9 @@ jobs:
           files: artifacts/**/*
           generate_release_notes: true
           fail_on_unmatched_files: true
+          # Append rather than replace, so release notes drafted by hand
+          # before tagging survive — this step only adds the download table.
+          append_body: true
           body: |
             ## Downloads
 
