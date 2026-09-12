@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSIX manifest template for AnythingToMarkdown.
+
+  The double-brace tokens below are filled in by packaging/msix/build_msix.ps1,
+  which refuses to pack if any of them survive substitution.
+  Identity/Name, Identity/Publisher and Properties/PublisherDisplayName MUST
+  match the values Partner Center shows under
+  "Product identity" for the reserved app name, or the Store rejects the
+  upload. See store/SUBMISSION.md.
+
+  Version is MAJOR.MINOR.BUILD.REVISION and is derived from
+  anytomd.__version__ by packaging/version_tool.py. The Store requires
+  REVISION to be 0.
+-->
+<Package
+    xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+    xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+    xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+    xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+    IgnorableNamespaces="uap uap5 rescap">
+
+  <Identity
+      Name="{{IDENTITY_NAME}}"
+      Publisher="{{PUBLISHER}}"
+      Version="{{VERSION}}"
+      ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>{{DISPLAY_NAME}}</DisplayName>
+    <PublisherDisplayName>{{PUBLISHER_DISPLAY_NAME}}</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <!-- 10.0.17763 (Windows 10 1809) is the oldest build that supports
+         everything used here: MSIX, app execution aliases and full-trust
+         file type associations. -->
+    <TargetDeviceFamily
+        Name="Windows.Desktop"
+        MinVersion="10.0.17763.0"
+        MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Capabilities>
+    <!-- A packaged desktop (Win32) app. runFullTrust is what lets the
+         bundled Python/Qt process read and write the user's documents
+         normally; no broadFileSystemAccess is needed. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+  <Applications>
+    <Application
+        Id="AnythingToMarkdown"
+        Executable="AnythingToMarkdown.exe"
+        EntryPoint="Windows.FullTrustApplication">
+
+      <!-- AppListEntry="default" is what puts the app in the Start menu /
+           "All apps" list, where it can be pinned to Start or the taskbar,
+           and right-clicked to uninstall. -->
+      <uap:VisualElements
+          DisplayName="{{DISPLAY_NAME}}"
+          Description="Convert PDFs, Word, Excel, PowerPoint, HTML, images and more into clean Markdown."
+          BackgroundColor="#2563eb"
+          Square150x150Logo="Assets\Square150x150Logo.png"
+          Square44x44Logo="Assets\Square44x44Logo.png"
+          AppListEntry="default">
+        <uap:DefaultTile
+            ShortName="{{DISPLAY_NAME}}"
+            Square71x71Logo="Assets\Square71x71Logo.png"
+            Square310x310Logo="Assets\Square310x310Logo.png"
+            Wide310x150Logo="Assets\Wide310x150Logo.png">
+          <uap:ShowNameOnTiles>
+            <uap:ShowOn Tile="square150x150Logo" />
+            <uap:ShowOn Tile="wide310x150Logo" />
+          </uap:ShowNameOnTiles>
+        </uap:DefaultTile>
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- Adds the app to Explorer's "Open with" menu for the formats it
+             can convert. Windows launches the .exe with the file path as
+             argv[1]; packaging/app_entry.py opens the GUI pre-loaded with
+             that file rather than converting silently. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="anytomd.document">
+            <uap:DisplayName>Convert to Markdown</uap:DisplayName>
+            <uap:InfoTip>Open in AnythingToMarkdown to convert this file to Markdown.</uap:InfoTip>
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.pdf</uap:FileType>
+              <uap:FileType>.docx</uap:FileType>
+              <uap:FileType>.doc</uap:FileType>
+              <uap:FileType>.pptx</uap:FileType>
+              <uap:FileType>.ppt</uap:FileType>
+              <uap:FileType>.xlsx</uap:FileType>
+              <uap:FileType>.xls</uap:FileType>
+              <uap:FileType>.epub</uap:FileType>
+              <uap:FileType>.msg</uap:FileType>
+              <uap:FileType>.csv</uap:FileType>
+              <uap:FileType>.html</uap:FileType>
+              <uap:FileType>.htm</uap:FileType>
+              <uap:FileType>.json</uap:FileType>
+              <uap:FileType>.xml</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+
+        <!-- Makes `anytomd ...` work from PowerShell / cmd / Terminal
+             without the user touching PATH: the CLI stays available even
+             though the app installs as an MSIX. -->
+        <uap5:Extension
+            Category="windows.appExecutionAlias"
+            Executable="AnythingToMarkdown.exe"
+            EntryPoint="Windows.FullTrustApplication">
+          <uap5:AppExecutionAlias>
+            <uap5:ExecutionAlias Alias="anytomd.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>

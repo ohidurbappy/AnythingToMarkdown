@@ -1,0 +1,9 @@
+Drag and drop files or whole folders, then convert the entire batch in one go
+Converts PDF, Word, Excel, PowerPoint, HTML, CSV, JSON, XML, EPUB and Outlook .msg
+Writes Markdown next to each source file, or collects everything into one output folder
+Live table shows each input, its Markdown output path and its status as the batch runs
+Conversion runs in the background, so the window never freezes and you can cancel anytime
+Built-in "anytomd" command for PowerShell, Command Prompt and Windows Terminal
+Right-click a document in File Explorer and open it straight into the app
+Runs completely offline: no account, no upload, no telemetry
+Free and open source under the MIT licence

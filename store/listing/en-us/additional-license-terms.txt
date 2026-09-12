@@ -1,0 +1,9 @@
+AnythingToMarkdown is distributed under the MIT Licence.
+
+It bundles third-party open-source components, each under its own licence:
+• MarkItDown (MIT) — the document conversion engine
+• PySide6 / Qt for Python (LGPL v3) — the graphical interface
+• Python (PSF Licence) and the supporting conversion libraries
+
+Full licence texts are included with the application.
+Source code: https://github.com/ohidurbappy/AnythingToMarkdown

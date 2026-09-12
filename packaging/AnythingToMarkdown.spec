@@ -1,8 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 """Cross-platform PyInstaller spec for the AnythingToMarkdown desktop app.
 
-On macOS it produces AnythingToMarkdown.app; on Windows/Linux it produces a
-one-folder app (dist/AnythingToMarkdown/AnythingToMarkdown[.exe]).
+Output depends on the platform and two environment switches:
+
+    (default on macOS)   dist/AnythingToMarkdown.app       .app bundle
+    (default elsewhere)  dist/AnythingToMarkdown[.exe]     single file
+    BUILD_ONEDIR=1       dist/AnythingToMarkdown/          one folder
+    FORCE_ONEFILE=1      single file even on macOS
+
+BUILD_ONEDIR is what the MSIX package is built from: an MSIX ships an already
+unpacked app, so the one-file bootloader's extract-to-temp step would only
+add startup cost (and Store certification frowns on it).
 
 Build with:
     macOS/Linux:  .venv/bin/pyinstaller packaging/AnythingToMarkdown.spec --noconfirm
@@ -13,6 +21,15 @@ import os
 import sys
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules
+
+# Keep the bundle version in step with anytomd.__version__ (the single source
+# of truth) instead of hard-coding it here. SPECPATH is injected by PyInstaller.
+sys.path.insert(0, SPECPATH)
+try:
+    from version_tool import read_version
+    APP_VERSION = read_version()
+except Exception:
+    APP_VERSION = "0.0.0"
 
 IS_MAC = sys.platform == "darwin"
 IS_WIN = sys.platform == "win32"
@@ -32,8 +49,10 @@ ENTITLEMENTS = os.environ.get("MACOS_ENTITLEMENTS") or None
 
 # macOS ships a proper .app bundle; Windows/Linux ship a single-file executable.
 # Set FORCE_ONEFILE=1 to produce a single-file binary on macOS too (mainly for
-# testing the onefile path).
+# testing the onefile path), or BUILD_ONEDIR=1 for the unpacked folder layout
+# the MSIX package needs.
 BUILD_APP = IS_MAC and os.environ.get("FORCE_ONEFILE") != "1"
+BUILD_ONEDIR = os.environ.get("BUILD_ONEDIR") == "1"
 
 datas, binaries, hiddenimports = [], [], []
 
@@ -83,9 +102,11 @@ pyz = PYZ(a.pure)
 # Packaging mode:
 #   * macOS  -> one-folder build wrapped in a proper .app bundle (fast launch,
 #     real icon/Finder integration, notarizable). The .dmg ships this.
-#   * Windows/Linux -> a single self-contained executable (onefile) so there's
-#     just one file to hand someone.
-if BUILD_APP:
+#   * BUILD_ONEDIR=1 -> the same one-folder layout without the .app wrapper;
+#     this is the payload the MSIX package is built from.
+#   * Windows/Linux default -> a single self-contained executable (onefile) so
+#     there's just one file to hand someone.
+if BUILD_APP or BUILD_ONEDIR:
     exe = EXE(
         pyz,
         a.scripts,
@@ -98,10 +119,11 @@ if BUILD_APP:
         upx=False,
         console=False,            # windowed app (no terminal)
         disable_windowed_traceback=False,
-        argv_emulation=True,      # lets Finder "Open With" pass files as argv
+        # Finder passes "Open With" files as argv; macOS-only PyInstaller feature.
+        argv_emulation=BUILD_APP,
         target_arch=None,
-        codesign_identity=CODESIGN_IDENTITY,
-        entitlements_file=ENTITLEMENTS,
+        codesign_identity=CODESIGN_IDENTITY if BUILD_APP else None,
+        entitlements_file=ENTITLEMENTS if BUILD_APP else None,
         icon=ICON,
     )
     coll = COLLECT(
@@ -113,40 +135,42 @@ if BUILD_APP:
         upx_exclude=[],
         name="AnythingToMarkdown",
     )
+
+if BUILD_APP:
     app = BUNDLE(
         coll,
         name="AnythingToMarkdown.app",
         icon=ICON,
         bundle_identifier="org.padakhep.anythingtomarkdown",
         info_plist={
-        "CFBundleName": "AnythingToMarkdown",
-        "CFBundleDisplayName": "AnythingToMarkdown",
-        "CFBundleShortVersionString": "1.0.0",
-        "CFBundleVersion": "1.0.0",
-        "NSHighResolutionCapable": True,
-        "LSMinimumSystemVersion": "11.0",
-        # Allow the app to receive files dropped onto its Dock/Finder icon.
-        "CFBundleDocumentTypes": [
-            {
-                "CFBundleTypeName": "Document",
-                "LSItemContentTypes": [
-                    "com.adobe.pdf",
-                    "org.openxmlformats.wordprocessingml.document",
-                    "org.openxmlformats.presentationml.presentation",
-                    "org.openxmlformats.spreadsheetml.sheet",
-                    "public.html",
-                    "public.comma-separated-values-text",
-                    "public.json",
-                    "public.xml",
-                    "public.plain-text",
-                ],
-                "CFBundleTypeRole": "Viewer",
-                "LSHandlerRank": "Alternate",
-            }
-        ],
-    },
-)
-else:
+            "CFBundleName": "AnythingToMarkdown",
+            "CFBundleDisplayName": "AnythingToMarkdown",
+            "CFBundleShortVersionString": APP_VERSION,
+            "CFBundleVersion": APP_VERSION,
+            "NSHighResolutionCapable": True,
+            "LSMinimumSystemVersion": "11.0",
+            # Allow the app to receive files dropped onto its Dock/Finder icon.
+            "CFBundleDocumentTypes": [
+                {
+                    "CFBundleTypeName": "Document",
+                    "LSItemContentTypes": [
+                        "com.adobe.pdf",
+                        "org.openxmlformats.wordprocessingml.document",
+                        "org.openxmlformats.presentationml.presentation",
+                        "org.openxmlformats.spreadsheetml.sheet",
+                        "public.html",
+                        "public.comma-separated-values-text",
+                        "public.json",
+                        "public.xml",
+                        "public.plain-text",
+                    ],
+                    "CFBundleTypeRole": "Viewer",
+                    "LSHandlerRank": "Alternate",
+                }
+            ],
+        },
+    )
+elif not BUILD_ONEDIR:
     # Single-file executable: bundle scripts + binaries + datas into one EXE.
     exe = EXE(
         pyz,

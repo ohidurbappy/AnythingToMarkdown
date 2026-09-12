@@ -229,7 +229,7 @@ _STATUS_FAILED = ("✗ Failed", "danger")
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, initial_files: Optional[List[Path]] = None):
         super().__init__()
         self.setWindowTitle(f"{__app_name__}")
         self.resize(940, 700)
@@ -242,6 +242,11 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._build_menu()
+        # Files handed to us by the OS (Explorer "Open with", a drop onto the
+        # app icon) are queued but not converted — the user still picks the
+        # output folder and presses Convert.
+        if initial_files:
+            self._add_paths(list(initial_files))
         self._refresh_state()
 
     # ------------------------------------------------------------------ #
@@ -713,12 +718,15 @@ def apply_theme(app: QApplication) -> None:
     app.setStyleSheet(_theme.stylesheet(palette, check_url=check))
 
 
-def launch_gui(argv: Optional[List[str]] = None) -> int:
+def launch_gui(
+    argv: Optional[List[str]] = None,
+    initial_files: Optional[List[Path]] = None,
+) -> int:
     app = QApplication.instance() or QApplication(argv if argv is not None else sys.argv)
     app.setApplicationName(__app_name__)
     app.setApplicationDisplayName(__app_name__)
     apply_theme(app)
-    window = MainWindow()
+    window = MainWindow(initial_files=initial_files)
     window.show()
     return app.exec()
 

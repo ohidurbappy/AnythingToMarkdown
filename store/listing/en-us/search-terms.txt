@@ -1,0 +1,7 @@
+markdown converter
+pdf to markdown
+docx to markdown
+document converter
+markitdown
+office to markdown
+batch convert markdown
