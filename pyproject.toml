@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anytomd"
-version = "1.0.0"
+version = "1.1.0"
 description = "Cross-platform GUI + CLI tool to convert PDFs, Office docs and more to Markdown, powered by MarkItDown."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -1,7 +1,13 @@
-1.0.0 — First Microsoft Store release.
+1.1.0 — First Microsoft Store release.
 
-• Drag-and-drop batch conversion for PDF, Word, Excel, PowerPoint, HTML, CSV, JSON, XML, EPUB and Outlook .msg
-• Choose a single output folder, or write Markdown alongside each source document
-• Per-file status table with cancel support
-• "anytomd" command line available from PowerShell and Windows Terminal
-• Open the app directly from File Explorer's "Open with" menu
+• Install from the Microsoft Store: AnythingToMarkdown now appears in the Start
+  menu and can be pinned to Start or the taskbar
+• Right-click a PDF, Word, Excel, PowerPoint, EPUB, .msg, CSV, HTML, JSON or XML
+  file and open it straight into the app
+• The "anytomd" command is available in PowerShell, Command Prompt and Windows
+  Terminal as soon as the app is installed — no setup
+• Uninstall cleanly from the Start menu or Settings, leaving nothing behind
+• Opening a document from File Explorer now queues it in the window so you can
+  choose where the Markdown goes, instead of converting without any feedback
+• Fixed: converting two files with the same name but different types (notes.csv
+  and notes.html) no longer lets one overwrite the other's Markdown
