@@ -1,4 +1,4 @@
-1.1.0 — First Microsoft Store release.
+1.0.3 — First Microsoft Store release.
 
 • Install from the Microsoft Store: AnythingToMarkdown now appears in the Start
   menu and can be pinned to Start or the taskbar
